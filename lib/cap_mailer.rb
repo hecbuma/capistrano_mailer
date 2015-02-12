@@ -154,7 +154,8 @@ class CapMailer < ActionMailer::Base
         :previous_release       => section_hash_previous_release,
         :other_deployment_info  => section_hash_other_deployment_info,
         :release_data           => options[:release_data],
-        :extra_information      => options[:extra_information]
+        :extra_information      => options[:extra_information],
+        :commits                => section_hash_commits
       }
     end
 

@@ -7,7 +7,7 @@ class CapMailer < ActionMailer::Base
     :subject_prepend          => "[DEPLOYMENT]-[#{(defined?(Rails) ? Rails.env.capitalize : defined?(RAILS_ENV) ? RAILS_ENV.capitalize : defined?(ENV) ? ENV['RAILS_ENV'] : "")}] ",
     :subject_append           => nil,
     # Include which sections of the deployment email?
-    :sections                 => %w(deployment release_data source_control latest_release previous_release other_deployment_info extra_information),
+    :sections                 => %w(deployment release_data source_control latest_release previous_release other_deployment_info extra_information commits),
     :site_name                => "",
     :template_prefixes        => { :success => nil, :failure => "failed" },
     :template_path            => "#{File.dirname(__FILE__)}/../views",
@@ -17,7 +17,7 @@ class CapMailer < ActionMailer::Base
   cattr_accessor :default_base_config
   attr_accessor  :config, :options
   attr_accessor  :date, :time, :inferred_command, :task_name, :repo_end
-  
+
   def self.configure(&block)
     yield @@default_base_config
   end
@@ -32,7 +32,7 @@ class CapMailer < ActionMailer::Base
   )
 
   def self.reloadable?() false end
-    
+
   def notification_email(cap, config = {}, *args)
     @options = { :release_data => {}, :extra_information => {}, :data => {} }.merge(args.extract_options!)
     @config  = default_base_config.merge(config.reverse_merge({
@@ -64,12 +64,12 @@ class CapMailer < ActionMailer::Base
           :run_method         => cap.run_method,
           :latest_release     => cap.latest_release
     }))
-    
+
     @date             = Date.today.to_s
     @time             = Time.now.strftime("%I:%M %p").to_s
     @inferred_command = "cap #{@config[:rails_env]} #{@config[:task_name]}"
     @task_name        = @config[:task_name] || "unknown"
-    
+
     repo  = @config[:repository]
     x     = repo.include?('/') ? repo.rindex('/') - 1 : repo.length
     front = repo.slice(0..x)
@@ -113,7 +113,17 @@ class CapMailer < ActionMailer::Base
   end
 
   private
-  
+
+    def git_log
+      return unless git_range
+      `git log #{git_range} --no-merges --format=format:"%h %s (%an)"`
+    end
+
+
+    def git_range
+      "#{config[:previous_revision]}..#{config[:latest_revision]}"
+    end
+
     def subject_line
       #The subject prepend and append are useful for people to setup filters in mail clients.
       user = config[:user] ? " by #{config[:user]}" : ""
@@ -202,6 +212,12 @@ class CapMailer < ActionMailer::Base
         :shared_path    => config[:shared_path],
         :run_method     => config[:run_method],
         :ip_address     => config[:ip_address]
+      }
+    end
+
+    def section_hash_commits
+      {
+        :git_log => git_log
       }
     end
 end

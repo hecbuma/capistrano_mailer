@@ -25,8 +25,6 @@ class CapMailer < ActionMailer::Base
   def self.configure_capistrano_mailer(&block)
     puts "Deprecated 'configure_capistrano_mailer'.  Please update your capistrano_mailer configuration to use 'configure' instead of 'configure_capistrano_mailer'"
   end
-
-  self.prepend_view_path default_base_config[:template_path]
   self.register_interceptor InlineStyle::Mail::Interceptor.new(:stylesheets_path =>
     (default_base_config[:stylesheets_path] || "#{File.dirname(__FILE__)}/../assets")
   )
@@ -64,6 +62,8 @@ class CapMailer < ActionMailer::Base
           :run_method         => cap.run_method,
           :latest_release     => cap.latest_release
     }))
+
+    self.prepend_view_path @config[:template_path]
 
     @date             = Date.today.to_s
     @time             = Time.now.strftime("%I:%M %p").to_s
@@ -105,11 +105,12 @@ class CapMailer < ActionMailer::Base
     end
 
     self.config.assets_dir = "#{File.dirname(__FILE__)}/../assets"
-
-    mail :subject       => "#{@job_status.to_s.upcase}: #{subject_line}",
+      mail(:subject       => "#{@job_status.to_s.upcase}: #{subject_line}",
          :to            => @config[:recipient_addresses],
          :from          => @config[:sender_address],
-         :template_name => template_name
+          ) do |format|
+            format.html { render template_name }
+          end
   end
 
   private
@@ -221,4 +222,4 @@ class CapMailer < ActionMailer::Base
         :git_log => git_log
       }
     end
-end
+    end
